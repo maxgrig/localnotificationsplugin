@@ -25,9 +25,10 @@ namespace Plugin.LocalNotifications
         public override void OnReceive(Context context, Intent intent)
         {
             var extra = intent.GetStringExtra(LocalNotificationKey);
+            var data = intent.GetStringExtra(LocalNotificationsImplementation.NotificationData);
             var notification = DeserializeNotification(extra);
 
-            CrossLocalNotifications.Current.Show(notification.Title, notification.Body, notification.Id);
+            CrossLocalNotifications.Current.Show(notification.Title, notification.Body, notification.Id, data);
         }
 
         private LocalNotification DeserializeNotification(string notificationString)

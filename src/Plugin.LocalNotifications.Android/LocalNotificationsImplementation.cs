@@ -14,6 +14,8 @@ namespace Plugin.LocalNotifications
     /// </summary>
     public class LocalNotificationsImplementation : ILocalNotifications
     {
+        public const string NotificationData = "notification_data";
+
         string _packageName => Application.Context.PackageName;
         NotificationManager _manager => (NotificationManager)Application.Context.GetSystemService(Context.NotificationService);
 
@@ -22,13 +24,16 @@ namespace Plugin.LocalNotifications
         /// </summary>
         public static int NotificationIconId { get; set; }
 
+        public static Type MainLauncherActivityType { get; set; }
+
         /// <summary>
         /// Show a local notification
         /// </summary>
         /// <param name="title">Title of the notification</param>
         /// <param name="body">Body or description of the notification</param>
         /// <param name="id">Id of the notification</param>
-        public void Show(string title, string body, int id = 0)
+        /// <param name="data">Data to include in Notification</param>
+        public void Show(string title, string body, int id = 0, string data = null)
         {
             var builder = new Notification.Builder(Application.Context);
             builder.SetContentTitle(title);
@@ -55,20 +60,26 @@ namespace Plugin.LocalNotifications
             }
 
             var resultIntent = GetLauncherActivity();
-            resultIntent.SetFlags(ActivityFlags.NewTask | ActivityFlags.ClearTask);
-            var stackBuilder = Android.Support.V4.App.TaskStackBuilder.Create(Application.Context);
-            stackBuilder.AddNextIntent(resultIntent);
-            var resultPendingIntent =
-                stackBuilder.GetPendingIntent(0, (int)PendingIntentFlags.UpdateCurrent);
-            builder.SetContentIntent(resultPendingIntent);
+            resultIntent.PutExtra(NotificationData, data);
+
+            var pendingIntent = PendingIntent.GetActivity(Application.Context, 0, resultIntent, PendingIntentFlags.UpdateCurrent);
+
+            builder.SetContentIntent(pendingIntent);
 
             _manager.Notify(id, builder.Build());
         }
 
         public static Intent GetLauncherActivity()
         {
-            var packageName = Application.Context.PackageName;
-            return Application.Context.PackageManager.GetLaunchIntentForPackage(packageName);
+            if (MainLauncherActivityType != null)
+            {
+                return new Intent(Application.Context, MainLauncherActivityType);
+            }
+            else
+            {
+                var packageName = Application.Context.PackageName;
+                return Application.Context.PackageManager.GetLaunchIntentForPackage(packageName);
+            }
         }
 
         /// <summary>
@@ -78,7 +89,7 @@ namespace Plugin.LocalNotifications
         /// <param name="body">Body or description of the notification</param>
         /// <param name="id">Id of the notification</param>
         /// <param name="notifyTime">Time to show notification</param>
-        public void Show(string title, string body, int id, DateTime notifyTime)
+        public void Show(string title, string body, int id, DateTime notifyTime, string data = null)
         {
             var intent = CreateIntent(id);
 
@@ -98,8 +109,11 @@ namespace Plugin.LocalNotifications
 
             var serializedNotification = SerializeNotification(localNotification);
             intent.PutExtra(ScheduledAlarmHandler.LocalNotificationKey, serializedNotification);
+            intent.PutExtra(NotificationData, data);
 
-            var pendingIntent = PendingIntent.GetBroadcast(Application.Context, 0, intent, PendingIntentFlags.CancelCurrent);
+            intent.SetFlags(ActivityFlags.SingleTop);
+
+            var pendingIntent = PendingIntent.GetBroadcast(Application.Context, 0, intent, PendingIntentFlags.UpdateCurrent);
             var triggerTime = NotifyTimeInMilliseconds(localNotification.NotifyTime);
             var alarmManager = GetAlarmManager();
 
