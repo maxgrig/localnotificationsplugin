@@ -27,7 +27,7 @@ namespace Plugin.LocalNotifications
 
         private static ILocalNotifications CreateLocalNotificationsImplementation()
         {
-#if NETSTANDARD1_0
+#if NETSTANDARD1_0 || NETSTANDARD2_0
             return null;
 #else
             return new LocalNotificationsImplementation();
